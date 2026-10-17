@@ -2,12 +2,36 @@
 
 import streamlit as st
 
-from store import PRODUCTS, related_products, search_products, update_cart
+from store import (
+    PRODUCTS,
+    agentic_recommendation_flow,
+    related_products,
+    search_products,
+    update_cart,
+)
 
 st.set_page_config(page_title="Shopwise", page_icon="🛍️")
 st.title("Shopwise")
 st.caption("Explore a sample catalog, compare products, and build a demo cart.")
 st.info("Sample catalog only. This demo does not process orders or payments.")
+
+with st.expander("Shopping assistant"):
+    request = st.text_input(
+        "Describe what you are shopping for",
+        placeholder="A reusable bottle for travel",
+    )
+    budget = st.number_input("Maximum price ($)", min_value=1.0, value=60.0)
+    if request:
+        workflow = agentic_recommendation_flow(request, budget)
+        st.caption("Workflow: interpret request → apply budget → rank catalog matches")
+        if workflow["ranked"]:
+            for item in workflow["ranked"]:
+                st.write(
+                    f"**{item['name']}** — ${item['price']:.2f} "
+                    f"(catalog relevance {item['match_score']:.2f})"
+                )
+        else:
+            st.info("No close catalog match within that budget.")
 
 if "cart" not in st.session_state:
     st.session_state.cart = {}

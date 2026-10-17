@@ -1,6 +1,11 @@
 import unittest
 
-from store import related_products, search_products, update_cart
+from store import (
+    agentic_recommendation_flow,
+    related_products,
+    search_products,
+    update_cart,
+)
 
 
 class StoreTests(unittest.TestCase):
@@ -22,6 +27,13 @@ class StoreTests(unittest.TestCase):
         self.assertTrue(picks)
         self.assertNotIn("mug", [product["id"] for product in picks])
         self.assertIn("reusable", picks[0]["tags"])
+
+    def test_assistant_flow_respects_budget_and_ranks_intent(self):
+        result = agentic_recommendation_flow("reusable travel bottle", 30)
+        self.assertTrue(
+            all(item["price"] <= 30 for item in result["budget_matches"])
+        )
+        self.assertEqual(result["ranked"][0]["id"], "bottle")
 
 
 if __name__ == "__main__":

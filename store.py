@@ -1,5 +1,8 @@
 """Sample catalog and transparent product discovery helpers."""
 
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+
 PRODUCTS = [
     {"id": "mug", "name": "Ceramic travel mug", "category": "Home", "price": 18.50, "tags": ["reusable", "coffee"]},
     {"id": "lamp", "name": "Adjustable desk lamp", "category": "Home", "price": 42.00, "tags": ["lighting", "study"]},
@@ -20,6 +23,38 @@ def search_products(query="", category="All", products=None):
             [product["name"], product["category"], *product["tags"]]
         ).lower())
     ]
+
+
+def agentic_recommendation_flow(query, budget, products=None, limit=5):
+    """Run independent intent, catalog, budget, and ranking stages locally."""
+    if budget <= 0:
+        raise ValueError("budget must be positive")
+    catalog = PRODUCTS if products is None else products
+    query_terms = query.strip()
+    eligible = [product for product in catalog if product["price"] <= budget]
+    if not eligible or not query_terms:
+        return {"intent": query_terms, "budget_matches": eligible, "ranked": []}
+
+    descriptions = [
+        f"{product['name']} {product['category']} {' '.join(product['tags'])}"
+        for product in eligible
+    ]
+    vectorizer = TfidfVectorizer(stop_words="english")
+    matrix = vectorizer.fit_transform([query_terms, *descriptions])
+    scores = cosine_similarity(matrix[0:1], matrix[1:]).ravel()
+    ranked = sorted(
+        zip(scores, eligible),
+        key=lambda pair: (-float(pair[0]), pair[1]["price"], pair[1]["id"]),
+    )
+    return {
+        "intent": query_terms,
+        "budget_matches": eligible,
+        "ranked": [
+            {**product, "match_score": float(score)}
+            for score, product in ranked[:limit]
+            if score > 0
+        ],
+    }
 
 
 def update_cart(cart, product_id, delta):
